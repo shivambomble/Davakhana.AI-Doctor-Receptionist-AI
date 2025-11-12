@@ -4,7 +4,6 @@
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 **Production-ready AI-powered conversational system for healthcare appointment management**
 
