@@ -21,6 +21,15 @@ export const config = {
   jwt: {
     secret: process.env.JWT_SECRET,
   },
+  
+  email: {
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT || '587'),
+    secure: process.env.EMAIL_SECURE === 'true',
+    user: process.env.EMAIL_USER,
+    password: process.env.EMAIL_PASSWORD,
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+  },
 };
 
 // Validate required environment variables
@@ -36,4 +45,9 @@ for (const key of required) {
   if (!process.env[key]) {
     throw new Error(`Missing required environment variable: ${key}`);
   }
+}
+
+// Email is optional but warn if not configured
+if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+  console.warn('⚠️  Email credentials not configured. Email notifications will be disabled.');
 }

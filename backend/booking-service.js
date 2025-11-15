@@ -1,5 +1,6 @@
 // Booking service with business logic and validation
 import { db } from './db.js';
+import { emailService } from './email-service.js';
 import { z } from 'zod';
 
 // Validation schemas
@@ -184,6 +185,28 @@ export class BookingService {
 
       // Get doctor info for confirmation
       const doctor = await db.getDoctorById(doctorId);
+      
+      // Get clinic info for email
+      const clinicInfo = await db.getClinicInfo();
+
+      // Send confirmation email
+      try {
+        await emailService.sendAppointmentConfirmation({
+          patientName,
+          patientEmail,
+          doctorName: doctor.name,
+          specialization: doctor.specialization,
+          date,
+          time,
+          fee: doctor.consultation_fee,
+          clinicName: clinicInfo.name,
+          clinicAddress: clinicInfo.address,
+          clinicPhone: clinicInfo.phone,
+        });
+      } catch (emailError) {
+        console.error('Failed to send confirmation email:', emailError);
+        // Don't fail the booking if email fails
+      }
 
       return {
         success: true,
@@ -223,6 +246,28 @@ export class BookingService {
           success: false,
           errors: [result.error],
         };
+      }
+
+      // Get appointment details for email
+      try {
+        const appointments = await db.getPatientAppointments(patientEmail);
+        const cancelledAppointment = appointments.find(a => a.id === appointmentId);
+        
+        if (cancelledAppointment) {
+          const clinicInfo = await db.getClinicInfo();
+          
+          await emailService.sendAppointmentCancellation({
+            patientName: cancelledAppointment.patient_name || 'Patient',
+            patientEmail,
+            doctorName: cancelledAppointment.doctor.name,
+            date: cancelledAppointment.appointment_date,
+            time: cancelledAppointment.start_time,
+            clinicName: clinicInfo.name,
+            clinicPhone: clinicInfo.phone,
+          });
+        }
+      } catch (emailError) {
+        console.error('Failed to send cancellation email:', emailError);
       }
 
       return {
@@ -317,6 +362,23 @@ export class BookingService {
       }
 
       const doctor = await db.getDoctorById(appointment.doctor_id);
+      const clinicInfo = await db.getClinicInfo();
+
+      // Send reschedule email
+      try {
+        await emailService.sendAppointmentReschedule({
+          patientName: patient.patient_name || 'Patient',
+          patientEmail,
+          doctorName: doctor.name,
+          oldDate: appointment.appointment_date,
+          oldTime: appointment.start_time,
+          newDate,
+          newTime: newTimeConverted,
+          clinicName: clinicInfo.name,
+        });
+      } catch (emailError) {
+        console.error('Failed to send reschedule email:', emailError);
+      }
 
       return {
         success: true,

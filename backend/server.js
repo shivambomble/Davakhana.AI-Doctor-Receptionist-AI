@@ -147,6 +147,13 @@ fastify.get('/api/appointments', async (request, reply) => {
   }
 });
 
+// Helper function to validate email
+function isValidEmail(email) {
+  if (!email || typeof email !== 'string') return false;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
 // Chat endpoint - main conversational interface
 fastify.post('/api/chat', async (request, reply) => {
   const { message, conversationHistory = [], sessionData = {} } = request.body;
@@ -236,6 +243,23 @@ fastify.post('/api/chat', async (request, reply) => {
 
     if (llmResponse.action === 'book_appointment' && llmResponse.data) {
       const bookingData = llmResponse.data;
+      
+      // Validate email before booking
+      if (!isValidEmail(bookingData.patient_email)) {
+        // Return error response asking for valid email
+        return {
+          message: `I noticed the email address "${bookingData.patient_email || 'provided'}" doesn't seem to be valid. Email addresses must include an @ symbol (like: name@example.com). Could you please provide your email address again?`,
+          action: 'collect_patient_info',
+          data: { missing_fields: ['patient_email'] },
+          actionResult: null,
+          requiresConfirmation: false,
+          conversationHistory: [
+            ...history,
+            { role: 'assistant', content: 'Email validation failed - requesting valid email' },
+          ],
+        };
+      }
+      
       if (bookingData.patient_name && bookingData.patient_email && bookingData.patient_phone &&
           bookingData.doctor_id && bookingData.date && bookingData.time) {
         const result = await bookingService.bookAppointment({
@@ -253,6 +277,21 @@ fastify.post('/api/chat', async (request, reply) => {
 
     if (llmResponse.action === 'reschedule_appointment' && llmResponse.data) {
       const rescheduleData = llmResponse.data;
+      
+      // Validate email before processing
+      if (rescheduleData.patient_email && !isValidEmail(rescheduleData.patient_email)) {
+        return {
+          message: `I noticed the email address "${rescheduleData.patient_email}" doesn't seem to be valid. Email addresses must include an @ symbol (like: name@example.com). Could you please provide your email address again?`,
+          action: 'collect_patient_info',
+          data: { missing_fields: ['patient_email'] },
+          actionResult: null,
+          requiresConfirmation: false,
+          conversationHistory: [
+            ...history,
+            { role: 'assistant', content: 'Email validation failed - requesting valid email' },
+          ],
+        };
+      }
       
       // If no appointment_id provided, try to get the most recent appointment for this patient
       let appointmentId = rescheduleData.appointment_id;
@@ -288,6 +327,22 @@ fastify.post('/api/chat', async (request, reply) => {
 
     if (llmResponse.action === 'cancel_appointment' && llmResponse.data) {
       const cancelData = llmResponse.data;
+      
+      // Validate email before processing
+      if (cancelData.patient_email && !isValidEmail(cancelData.patient_email)) {
+        return {
+          message: `I noticed the email address "${cancelData.patient_email}" doesn't seem to be valid. Email addresses must include an @ symbol (like: name@example.com). Could you please provide your email address again?`,
+          action: 'collect_patient_info',
+          data: { missing_fields: ['patient_email'] },
+          actionResult: null,
+          requiresConfirmation: false,
+          conversationHistory: [
+            ...history,
+            { role: 'assistant', content: 'Email validation failed - requesting valid email' },
+          ],
+        };
+      }
+      
       if (cancelData.appointment_id && cancelData.patient_email) {
         const result = await bookingService.cancelAppointment(
           cancelData.appointment_id,

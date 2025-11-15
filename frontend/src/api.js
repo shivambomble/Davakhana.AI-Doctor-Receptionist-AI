@@ -74,4 +74,15 @@ export const chatAPI = {
 
     return response.json();
   },
+
+  // Get patient appointments
+  async getAppointments(email) {
+    const response = await fetch(`${API_BASE}/appointments?email=${encodeURIComponent(email)}`);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch appointments');
+    }
+
+    return response.json();
+  },
 };

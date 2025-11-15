@@ -122,7 +122,13 @@ export const db = {
     const { data, error } = await supabase
       .from('appointments')
       .select(`
-        *,
+        id,
+        appointment_date,
+        start_time,
+        end_time,
+        status,
+        doctor_id,
+        patient_id,
         doctor:doctors(name, specialization)
       `)
       .eq('patient_id', patient.id)
